@@ -12,7 +12,7 @@ const fetchChannelStats = async () => {
 
 const fetchChannelVideos = async () => {
   const { data } = await apiClient.get("/dashboard/videos");
-  return data.data.videos; // The videos are inside data.data.videos
+  return data.data.videos;
 };
 
 const togglePublishStatus = async videoId => {
@@ -50,6 +50,15 @@ const updateUserCoverImage = async coverImage => {
   return data.data;
 };
 
+const updateUserAvatar = async avatar => {
+  const formData = new FormData();
+  formData.append("avatar", avatar);
+  const { data } = await apiClient.patch("/users/avatar", formData, {
+    headers: { "Content-Type": "multipart/form-data" },
+  });
+  return data.data;
+};
+
 // --- Component ---
 function Dashboard() {
   const queryClient = useQueryClient();
@@ -57,30 +66,27 @@ function Dashboard() {
   const [playlistName, setPlaylistName] = useState("");
   const [playlistDescription, setPlaylistDescription] = useState("");
   const [coverImageFile, setCoverImageFile] = useState(null);
+  const [avatarFile, setAvatarFile] = useState(null); // ✅ added
 
-  // Fetch channel stats
   const { data: stats, isLoading: isLoadingStats } = useQuery({
     queryKey: ["dashboardStats"],
     queryFn: fetchChannelStats,
   });
 
-  // Fetch channel videos
   const { data: videos, isLoading: isLoadingVideos } = useQuery({
     queryKey: ["dashboardVideos"],
     queryFn: fetchChannelVideos,
   });
 
-  const { data: playlists, isLoading: isLoadingPlaylists } = useQuery({
+  const { data: playlists } = useQuery({
     queryKey: ["playlists", user?._id],
     queryFn: () => fetchUserPlaylists(user?._id),
-    enabled: !!user, // Only run this query if the user is loaded
+    enabled: !!user,
   });
 
-  // Mutation for toggling publish status
   const togglePublishMutation = useMutation({
     mutationFn: togglePublishStatus,
     onSuccess: () => {
-      // When successful, refetch the videos to show the updated status
       queryClient.invalidateQueries({ queryKey: ["dashboardVideos"] });
     },
   });
@@ -88,14 +94,11 @@ function Dashboard() {
   const deleteVideoMutation = useMutation({
     mutationFn: deleteVideo,
     onSuccess: () => {
-      // When a video is deleted, refetch both stats and videos
-      // to keep everything on the page up-to-date.
       queryClient.invalidateQueries({ queryKey: ["dashboardStats"] });
       queryClient.invalidateQueries({ queryKey: ["dashboardVideos"] });
       alert("Video deleted successfully!");
     },
-    onError: error => {
-      console.error("Failed to delete video", error);
+    onError: () => {
       alert("Failed to delete video. Please try again.");
     },
   });
@@ -118,29 +121,38 @@ function Dashboard() {
   const deletePlaylistMutation = useMutation({
     mutationFn: deletePlaylist,
     onSuccess: () => {
-      // When a playlist is deleted, refetch the playlist list
       queryClient.invalidateQueries({ queryKey: ["playlists", user?._id] });
       alert("Playlist deleted successfully!");
-    },
-    onError: error => {
-      alert(
-        `Failed to delete playlist: ${error.response?.data?.message || error.message}`,
-      );
     },
   });
 
   const coverImageMutation = useMutation({
     mutationFn: updateUserCoverImage,
     onSuccess: () => {
-      // Refetch the user's data everywhere to show the new image
       queryClient.invalidateQueries({ queryKey: ["channel", user.username] });
-      queryClient.invalidateQueries({ queryKey: ["dashboardStats"] }); // Stats includes channel info
+      queryClient.invalidateQueries({ queryKey: ["dashboardStats"] });
       alert("Cover image updated successfully!");
-      setCoverImageFile(null); // Clear the file input
+      setCoverImageFile(null);
     },
     onError: error => {
       alert(
         `Failed to update cover image: ${error.response?.data?.message || error.message}`,
+      );
+    },
+  });
+
+  // ✅ Avatar mutation
+  const avatarMutation = useMutation({
+    mutationFn: updateUserAvatar,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["channel", user.username] });
+      queryClient.invalidateQueries({ queryKey: ["dashboardStats"] });
+      alert("Avatar updated successfully!");
+      setAvatarFile(null);
+    },
+    onError: error => {
+      alert(
+        `Failed to update avatar: ${error.response?.data?.message || error.message}`,
       );
     },
   });
@@ -150,7 +162,6 @@ function Dashboard() {
   };
 
   const handleDeleteVideo = videoId => {
-    // Show a simple browser confirmation dialog
     if (
       window.confirm(
         "Are you sure you want to delete this video? This action cannot be undone.",
@@ -178,10 +189,6 @@ function Dashboard() {
     }
   };
 
-  const handleCoverImageChange = e => {
-    setCoverImageFile(e.target.files[0]);
-  };
-
   const handleCoverImageSubmit = e => {
     e.preventDefault();
     if (!coverImageFile) {
@@ -191,25 +198,41 @@ function Dashboard() {
     coverImageMutation.mutate(coverImageFile);
   };
 
+  // ✅ Avatar submit handler
+  const handleAvatarSubmit = e => {
+    e.preventDefault();
+    if (!avatarFile) {
+      alert("Please select a file to upload.");
+      return;
+    }
+    avatarMutation.mutate(avatarFile);
+  };
+
   if (isLoadingStats || isLoadingVideos) {
-    return <div className="text-center p-8">Loading dashboard...</div>;
+    return (
+      <div className="text-center p-8 text-white">Loading dashboard...</div>
+    );
   }
 
   return (
     <div className="container mx-auto px-4 py-8">
       <h1 className="text-3xl font-bold text-white mb-6">Your Dashboard</h1>
+
+      {/* ✅ Channel Settings */}
       <div className="bg-gray-800 p-6 rounded-lg mb-8">
-        <h2 className="text-2xl font-bold text-white mb-4">Channel Settings</h2>
+        <h2 className="text-2xl font-bold text-white mb-6">Channel Settings</h2>
+
+        {/* ✅ Cover Image — fixed height, not aspect-video */}
         <div className="mb-6">
           <label className="block text-sm font-medium text-gray-300 mb-2">
             Current Cover Image
           </label>
-          <div className="w-full aspect-video bg-gray-700 rounded-lg overflow-hidden">
+          <div className="w-full h-48  rounded-lg overflow-hidden flex items-center justify-center">
             {user?.coverImage ? (
               <img
                 src={user.coverImage}
                 alt="Cover"
-                className="w-full h-full object-cover"
+                className="max-w-full max-h-full object-contain" // ← full image
               />
             ) : (
               <div className="flex justify-center items-center h-full">
@@ -217,52 +240,94 @@ function Dashboard() {
               </div>
             )}
           </div>
+          <form
+            onSubmit={handleCoverImageSubmit}
+            className="mt-3 flex items-center space-x-4"
+          >
+            <input
+              type="file"
+              id="coverImage"
+              onChange={e => setCoverImageFile(e.target.files[0])}
+              accept="image/*"
+              className="w-full text-sm text-gray-400 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-gray-600 file:text-gray-200 hover:file:bg-gray-500"
+            />
+            <button
+              type="submit"
+              disabled={!coverImageFile || coverImageMutation.isPending}
+              className="px-4 py-2 font-semibold text-white bg-indigo-600 rounded-md hover:bg-indigo-700 disabled:bg-indigo-400 disabled:cursor-not-allowed shrink-0"
+            >
+              {coverImageMutation.isPending ? "Uploading..." : "Upload"}
+            </button>
+          </form>
         </div>
-        <form onSubmit={handleCoverImageSubmit} className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-300">
-              Change Cover Image
-            </label>
-            <div className="mt-2 flex items-center space-x-4">
+
+        {/* ✅ Avatar section */}
+        <div className="mb-2">
+          <label className="block text-sm font-medium text-gray-300 mb-2">
+            Current Avatar
+          </label>
+          <div className="flex items-center space-x-4">
+            <img
+              src={user?.avatar}
+              alt="Avatar"
+              className="w-20 h-20 rounded-full object-cover border-2 border-gray-600"
+              onError={e => {
+                e.target.src = "https://via.placeholder.com/80";
+              }}
+            />
+            <form
+              onSubmit={handleAvatarSubmit}
+              className="flex items-center space-x-4 grow"
+            >
               <input
                 type="file"
-                onChange={handleCoverImageChange}
+                id="avatar"
+                onChange={e => setAvatarFile(e.target.files[0])}
                 accept="image/*"
                 className="w-full text-sm text-gray-400 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-gray-600 file:text-gray-200 hover:file:bg-gray-500"
               />
               <button
                 type="submit"
-                disabled={!coverImageFile || coverImageMutation.isPending}
-                className="px-4 py-2 font-semibold text-white bg-indigo-600 rounded-md hover:bg-indigo-700 disabled:bg-indigo-400 disabled:cursor-not-allowed"
+                disabled={!avatarFile || avatarMutation.isPending}
+                className="px-4 py-2 font-semibold text-white bg-indigo-600 rounded-md hover:bg-indigo-700 disabled:bg-indigo-400 disabled:cursor-not-allowed shrink-0"
               >
-                {coverImageMutation.isPending ? "Uploading..." : "Upload"}
+                {avatarMutation.isPending ? "Uploading..." : "Upload"}
               </button>
-            </div>
+            </form>
           </div>
-        </form>
+        </div>
       </div>
 
       {/* Stats Section */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
         <div className="bg-gray-800 p-4 rounded-lg text-center">
-          <p className="text-2xl font-bold">{stats?.totalSubscribers || 0}</p>
+          <p className="text-2xl font-bold text-white">
+            {stats?.totalSubscribers || 0}
+          </p>
           <p className="text-gray-400">Subscribers</p>
         </div>
         <div className="bg-gray-800 p-4 rounded-lg text-center">
-          <p className="text-2xl font-bold">{stats?.totalViews || 0}</p>
+          <p className="text-2xl font-bold text-white">
+            {stats?.totalViews || 0}
+          </p>
           <p className="text-gray-400">Total Views</p>
         </div>
         <div className="bg-gray-800 p-4 rounded-lg text-center">
-          <p className="text-2xl font-bold">{stats?.totalVideos || 0}</p>
+          <p className="text-2xl font-bold text-white">
+            {stats?.totalVideos || 0}
+          </p>
           <p className="text-gray-400">Total Videos</p>
         </div>
         <div className="bg-gray-800 p-4 rounded-lg text-center">
-          <p className="text-2xl font-bold">{stats?.totalLikes || 0}</p>
+          <p className="text-2xl font-bold text-white">
+            {stats?.totalLikes || 0}
+          </p>
           <p className="text-gray-400">Total Likes</p>
         </div>
       </div>
+
+      {/* Playlists Section */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
-        {/* Create Playlist Form */}
         <div className="bg-gray-800 p-6 rounded-lg">
           <h2 className="text-2xl font-bold text-white mb-4">
             Create New Playlist
@@ -274,6 +339,7 @@ function Dashboard() {
               </label>
               <input
                 type="text"
+                id="playlistName"
                 value={playlistName}
                 onChange={e => setPlaylistName(e.target.value)}
                 className="w-full px-3 py-2 mt-1 text-gray-300 bg-gray-700 border border-gray-600 rounded-md"
@@ -284,6 +350,7 @@ function Dashboard() {
                 Description
               </label>
               <textarea
+                id="playlistDescription"
                 value={playlistDescription}
                 onChange={e => setPlaylistDescription(e.target.value)}
                 rows="3"
@@ -302,7 +369,6 @@ function Dashboard() {
           </form>
         </div>
 
-        {/* List of Playlists */}
         <div className="bg-gray-800 p-6 rounded-lg">
           <h2 className="text-2xl font-bold text-white mb-4">Your Playlists</h2>
           <div className="space-y-3 max-h-96 overflow-y-auto">
@@ -341,7 +407,7 @@ function Dashboard() {
       {/* Videos Table */}
       <h2 className="text-2xl font-bold text-white mb-4">Your Videos</h2>
       <div className="bg-gray-800 rounded-lg overflow-hidden">
-        <table className="w-full text-left">
+        <table className="w-full text-left text-white">
           <thead className="bg-gray-700">
             <tr>
               <th className="p-4">Thumbnail</th>
@@ -363,7 +429,9 @@ function Dashboard() {
                 <td className="p-4 font-semibold">{video.title}</td>
                 <td className="p-4">
                   <span
-                    className={`px-2 py-1 rounded-full text-xs ${video.isPublished ? "bg-green-600" : "bg-yellow-600"}`}
+                    className={`px-2 py-1 rounded-full text-xs ${
+                      video.isPublished ? "bg-green-600" : "bg-yellow-600"
+                    }`}
                   >
                     {video.isPublished ? "Published" : "Unpublished"}
                   </span>
@@ -381,7 +449,6 @@ function Dashboard() {
                   >
                     Edit
                   </Link>
-                  {/* Edit and Delete buttons will be added in a future step */}
                   <button
                     onClick={() => handleDeleteVideo(video._id)}
                     className="px-3 py-1 text-sm bg-red-600 rounded-md hover:bg-red-700 disabled:opacity-50"

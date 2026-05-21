@@ -20,12 +20,15 @@ function Login() {
     setError("");
     setLoading(true);
     try {
-      const response = await apiClient.post("/users/login", formData);
+      const response = await apiClient.post("/users/login", {
+        email: formData.email, // ✅ send as email
+        username: formData.email, // ✅ also send as username
+        password: formData.password,
+      });
       if (response.data && response.data.success) {
-        // The backend sends user data inside a 'data' object
         const { user } = response.data.data;
         dispatch(authLogin(user));
-        navigate("/"); // Redirect to home page
+        navigate("/");
       }
     } catch (err) {
       setError(
@@ -60,6 +63,7 @@ function Login() {
               required
               value={formData.email}
               onChange={handleChange}
+              placeholder="Enter your email or username"
               className="w-full px-3 py-2 mt-1 text-gray-300 bg-gray-700 border border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
             />
           </div>
@@ -78,18 +82,17 @@ function Login() {
               required
               value={formData.password}
               onChange={handleChange}
+              placeholder="Enter your password"
               className="w-full px-3 py-2 mt-1 text-gray-300 bg-gray-700 border border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
             />
           </div>
-          <div>
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full px-4 py-2 font-bold text-white bg-indigo-600 rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:bg-indigo-400 disabled:cursor-not-allowed"
-            >
-              {loading ? "Logging in..." : "Login"}
-            </button>
-          </div>
+          <button
+            type="submit"
+            disabled={loading}
+            className="w-full px-4 py-2 font-bold text-white bg-indigo-600 rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:bg-indigo-400 disabled:cursor-not-allowed"
+          >
+            {loading ? "Logging in..." : "Login"}
+          </button>
         </form>
         <p className="text-sm text-center text-gray-400">
           Don't have an account?{" "}
