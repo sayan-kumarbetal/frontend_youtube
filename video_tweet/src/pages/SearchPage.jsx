@@ -98,7 +98,7 @@ function SearchPage() {
                       {formatTimeAgo(tweet.createdAt)}
                     </p>
                   </div>
-                  <p className="text-gray-300 mt-1 text-sm break-words">
+                  <p className="text-gray-300 mt-1 text-sm wrap-break-word">
                     {tweet.content}
                   </p>
                 </div>
