@@ -1,8 +1,8 @@
+import React, { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useSelector, useDispatch } from "react-redux";
 import { logout } from "../store/authSlice";
 import { persistor } from "../store/store";
-import { useState } from "react";
 
 function Navbar() {
   const navigate = useNavigate();
@@ -28,16 +28,19 @@ function Navbar() {
   };
 
   return (
-    <nav className="flex items-center justify-between px-6 py-3 bg-gray-900 border-b border-gray-700">
-      {/* Logo */}
-      <Link to="/" className="text-white text-xl font-bold shrink-0">
-        𝖵𝗂𝖽𝖾𝗈-𝖳𝗐𝖾𝖾𝗍
-      </Link>
+    <nav className="flex flex-col sm:flex-row items-center justify-between gap-4 px-4 py-3 bg-slate-900 border-b border-slate-800 sticky top-0 z-40">
+      <div className="flex items-center justify-between w-full sm:w-auto shrink-0">
+        <Link
+          to="/"
+          className="text-white text-xl font-extrabold tracking-tight bg-gradient-to-r from-indigo-400 to-purple-400 bg-clip-text text-transparent"
+        >
+          Video-Tweet
+        </Link>
+      </div>
 
-      {/* ✅ Search Bar */}
       <form
         onSubmit={handleSearch}
-        className="flex items-center w-full max-w-md mx-6"
+        className="flex items-center w-full max-w-md"
       >
         <input
           type="text"
@@ -48,42 +51,43 @@ function Navbar() {
               ? "Search videos and tweets..."
               : "Login to search..."
           }
-          className="w-full px-4 py-1.5 rounded-l-full bg-gray-800 text-white border border-gray-600 focus:outline-none focus:border-indigo-500 text-sm"
+          className="w-full px-4 py-2 rounded-l-xl bg-slate-800 text-slate-100 border border-slate-700 placeholder-slate-500 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 text-sm transition"
         />
         <button
           type="submit"
-          className="px-4 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-r-full text-sm border border-indigo-600"
+          className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-r-xl text-sm font-medium border border-indigo-600 transition shrink-0"
         >
           🔍
         </button>
       </form>
 
-      {/* Right side */}
-      <div className="flex items-center gap-4 shrink-0">
+      <div className="flex items-center gap-3 overflow-x-auto w-full sm:w-auto pb-1 sm:pb-0 scrollbar-none justify-start sm:justify-end shrink-0">
         {isAuthenticated ? (
           <>
-            <span className="text-gray-300 text-sm">Hi, {user?.username}</span>
+            <span className="text-slate-400 text-xs whitespace-nowrap bg-slate-800 px-2.5 py-1 rounded-md">
+              Hi, {user?.username}
+            </span>
             <Link
               to="/dashboard"
-              className="text-gray-300 hover:text-white text-sm"
+              className="text-slate-300 hover:text-white text-xs font-medium whitespace-nowrap px-2 py-1"
             >
               Dashboard
             </Link>
             <Link
               to="/tweets"
-              className="text-gray-300 hover:text-white text-sm"
+              className="text-slate-300 hover:text-white text-xs font-medium whitespace-nowrap px-2 py-1"
             >
               Tweets
             </Link>
             <Link
               to="/upload-video"
-              className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-1.5 rounded text-sm"
+              className="bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition"
             >
               Upload
             </Link>
             <button
               onClick={handleLogout}
-              className="bg-red-600 hover:bg-red-700 text-white px-4 py-1.5 rounded text-sm"
+              className="bg-rose-600/20 hover:bg-rose-600 text-rose-400 hover:text-white px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition border border-rose-500/30 hover:border-transparent"
             >
               Logout
             </button>
@@ -92,13 +96,13 @@ function Navbar() {
           <>
             <Link
               to="/login"
-              className="text-gray-300 hover:text-white text-sm"
+              className="text-slate-300 hover:text-white text-xs font-medium px-3 py-1.5"
             >
               Login
             </Link>
             <Link
               to="/signup"
-              className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-1.5 rounded text-sm"
+              className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-1.5 rounded-lg text-xs font-semibold transition"
             >
               Sign Up
             </Link>

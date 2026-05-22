@@ -11,51 +11,47 @@ function Header() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   const handleLogout = async () => {
-    setIsMobileMenuOpen(false); // Close mobile menu if logging out from there
+    setIsMobileMenuOpen(false);
     try {
-      // Await backend session destruction first
       await apiClient.post("/users/logout");
       dispatch(logout());
       navigate("/login");
     } catch (error) {
-      console.error(
-        "Logout API call failed, but logging out on frontend anyway.",
-        error,
-      );
       dispatch(logout());
       navigate("/login");
     }
   };
 
-  const closeMobileMenu = () => setIsMobileMenuOpen(false);
-
   const navItems = [
-    { name: "Home", path: "/", active: true },
-    { name: "Tweets", path: "/tweets", active: true },
+    { name: "Home", path: "/" },
+    { name: "Tweets", path: "/tweets" },
   ];
 
   return (
-    <header className="bg-gray-800 shadow-md sticky top-0 z-50">
+    <header className="bg-slate-900 border-b border-slate-800 sticky top-0 z-50 shadow-lg">
       <nav className="container mx-auto px-4">
         <div className="flex justify-between items-center py-3">
-          {/* Left side: Logo and Desktop Nav */}
-          <div className="flex items-center space-x-8">
+          <div className="flex items-center space-x-6">
             <Link
               to="/"
-              className="text-xl font-bold text-white"
-              onClick={closeMobileMenu}
+              className="text-xl font-black bg-gradient-to-r from-indigo-400 to-purple-500 bg-clip-text text-transparent"
+              onClick={() => setIsMobileMenuOpen(false)}
             >
               VideoTweet
             </Link>
 
-            <ul className="hidden md:flex items-center space-x-4">
+            <ul className="hidden md:flex items-center space-x-2">
               {isAuthenticated &&
                 navItems.map(item => (
                   <li key={item.name}>
                     <NavLink
                       to={item.path}
                       className={({ isActive }) =>
-                        `px-3 py-2 rounded-md text-sm font-medium ${isActive ? "bg-gray-900 text-white" : "text-gray-300 hover:bg-gray-700"}`
+                        `px-3 py-1.5 rounded-lg text-sm font-medium transition ${
+                          isActive
+                            ? "bg-slate-800 text-indigo-400 font-semibold"
+                            : "text-slate-400 hover:bg-slate-800 hover:text-slate-200"
+                        }`
                       }
                     >
                       {item.name}
@@ -65,33 +61,32 @@ function Header() {
             </ul>
           </div>
 
-          {/* Right side: Desktop Auth Buttons */}
           <div className="hidden md:flex items-center space-x-4">
             {isAuthenticated ? (
               <>
                 <Link
                   to="/upload-video"
-                  className="px-4 py-2 text-sm font-medium text-white bg-green-600 rounded-md hover:bg-green-700"
+                  className="px-4 py-2 text-sm font-medium text-white bg-emerald-600 rounded-lg hover:bg-emerald-700 transition shadow-sm shadow-emerald-900/20"
                 >
                   Upload
                 </Link>
                 <button
                   onClick={handleLogout}
-                  className="px-4 py-2 text-sm font-medium text-white bg-gray-600 rounded-md hover:bg-gray-700"
+                  className="px-4 py-2 text-sm font-medium text-slate-300 bg-slate-800 rounded-lg hover:bg-slate-700 transition border border-slate-700"
                 >
                   Logout
                 </button>
                 {user && (
                   <Link
                     to="/dashboard"
-                    className="flex items-center space-x-3 hover:bg-gray-700 p-2 rounded-md transition"
+                    className="flex items-center space-x-2.5 bg-slate-800 hover:bg-slate-700/80 p-1.5 pr-3 rounded-lg transition border border-slate-700/50"
                   >
                     <img
                       src={user?.avatar}
                       alt={user?.username}
-                      className="w-10 h-10 rounded-full object-cover border-2 border-gray-600"
+                      className="w-8 h-8 rounded-full object-cover ring-2 ring-indigo-500/20"
                     />
-                    <span className="text-white font-semibold hidden sm:block">
+                    <span className="text-slate-200 text-sm font-medium max-w-[100px] truncate">
                       {user?.username}
                     </span>
                   </Link>
@@ -101,13 +96,13 @@ function Header() {
               <>
                 <Link
                   to="/login"
-                  className="px-4 py-2 text-sm font-medium text-white bg-indigo-600 rounded-md hover:bg-indigo-700"
+                  className="px-4 py-2 text-sm font-medium text-white bg-indigo-600 rounded-lg hover:bg-indigo-700 transition"
                 >
                   Login
                 </Link>
                 <Link
                   to="/signup"
-                  className="px-4 py-2 text-sm font-medium text-gray-300 bg-gray-700 rounded-md hover:bg-gray-600"
+                  className="px-4 py-2 text-sm font-medium text-slate-300 bg-slate-800 rounded-lg hover:bg-slate-700 transition border border-slate-700"
                 >
                   Sign Up
                 </Link>
@@ -115,11 +110,10 @@ function Header() {
             )}
           </div>
 
-          {/* Mobile Menu Button */}
           <div className="md:hidden flex items-center">
             <button
               onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-              className="text-gray-300 hover:text-white focus:outline-none"
+              className="p-1.5 text-slate-400 hover:text-white rounded-lg bg-slate-800 hover:bg-slate-700 transition focus:outline-none"
               aria-label="Toggle Menu"
             >
               <svg
@@ -127,31 +121,38 @@ function Header() {
                 fill="none"
                 stroke="currentColor"
                 viewBox="0 0 24 24"
-                xmlns="http://www.w3.org/2000/svg"
               >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth="2"
-                  d="M4 6h16M4 12h16m-7 6h7"
-                ></path>
+                {isMobileMenuOpen ? (
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth="2"
+                    d="M6 18L18 6M6 6l12 12"
+                  />
+                ) : (
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth="2"
+                    d="M4 6h16M4 12h16m-7 6h7"
+                  />
+                )}
               </svg>
             </button>
           </div>
         </div>
 
-        {/* Mobile Menu Dropdown */}
         {isMobileMenuOpen && (
-          <div className="md:hidden pb-4">
-            <ul className="flex flex-col space-y-2">
+          <div className="md:hidden pb-4 pt-2 border-t border-slate-800 space-y-3 animate-fadeIn">
+            <ul className="space-y-1">
               {isAuthenticated &&
                 navItems.map(item => (
                   <li key={item.name}>
                     <NavLink
                       to={item.path}
-                      onClick={closeMobileMenu}
+                      onClick={() => setIsMobileMenuOpen(false)}
                       className={({ isActive }) =>
-                        `block px-3 py-2 rounded-md text-base font-medium ${isActive ? "bg-gray-900 text-white" : "text-gray-300 hover:bg-gray-700"}`
+                        `block px-3 py-2 rounded-lg text-base font-medium ${isActive ? "bg-indigo-600/10 text-indigo-400" : "text-slate-400 hover:bg-slate-800"}`
                       }
                     >
                       {item.name}
@@ -159,26 +160,26 @@ function Header() {
                   </li>
                 ))}
             </ul>
-            <div className="mt-4 pt-4 border-t border-gray-700 flex flex-col space-y-3">
+            <div className="pt-3 border-t border-slate-800 flex flex-col space-y-2">
               {isAuthenticated ? (
                 <>
                   <Link
                     to="/dashboard"
-                    onClick={closeMobileMenu}
-                    className="text-gray-300 hover:bg-gray-700 block px-3 py-2 rounded-md text-base font-medium"
+                    onClick={() => setIsMobileMenuOpen(false)}
+                    className="text-slate-300 bg-slate-800 hover:bg-slate-700 block px-3 py-2 rounded-lg text-base font-medium transition"
                   >
                     Dashboard
                   </Link>
                   <Link
                     to="/upload-video"
-                    onClick={closeMobileMenu}
-                    className="text-gray-300 hover:bg-gray-700 block px-3 py-2 rounded-md text-base font-medium"
+                    onClick={() => setIsMobileMenuOpen(false)}
+                    className="text-white bg-emerald-600 hover:bg-emerald-700 block px-3 py-2 rounded-lg text-base font-medium text-center transition"
                   >
                     Upload Video
                   </Link>
                   <button
                     onClick={handleLogout}
-                    className="text-left text-red-400 hover:bg-gray-700 block px-3 py-2 rounded-md text-base font-medium"
+                    className="text-center text-rose-400 bg-rose-950/20 hover:bg-rose-900 border border-rose-900/30 block w-full px-3 py-2 rounded-lg text-base font-medium transition"
                   >
                     Logout
                   </button>
@@ -187,15 +188,15 @@ function Header() {
                 <>
                   <Link
                     to="/login"
-                    onClick={closeMobileMenu}
-                    className="text-gray-300 hover:bg-gray-700 block px-3 py-2 rounded-md text-base font-medium"
+                    onClick={() => setIsMobileMenuOpen(false)}
+                    className="text-white bg-indigo-600 hover:bg-indigo-700 block px-3 py-2 rounded-lg text-base font-medium text-center transition"
                   >
                     Login
                   </Link>
                   <Link
                     to="/signup"
-                    onClick={closeMobileMenu}
-                    className="text-gray-300 hover:bg-gray-700 block px-3 py-2 rounded-md text-base font-medium"
+                    onClick={() => setIsMobileMenuOpen(false)}
+                    className="text-slate-300 bg-slate-800 hover:bg-slate-700 block px-3 py-2 rounded-lg text-base font-medium text-center transition border border-slate-700"
                   >
                     Sign Up
                   </Link>

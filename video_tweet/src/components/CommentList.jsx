@@ -2,13 +2,10 @@ import React, { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useSelector } from "react-redux";
 import apiClient from "../api/axios";
-import { Link } from "react-router-dom";
 import { formatTimeAgo } from "../utils/time";
 
-// --- API Functions ---
 const fetchComments = async videoId => {
   const { data } = await apiClient.get(`/comments/${videoId}`);
-  // The API response for comments might be paginated, we'll take the docs
   return data.data.docs;
 };
 
@@ -17,14 +14,13 @@ const addComment = async ({ videoId, content }) => {
   return data.data;
 };
 
-// --- Component ---
 function CommentList({ videoId }) {
   const queryClient = useQueryClient();
   const { isAuthenticated, user } = useSelector(state => state.auth);
   const [newComment, setNewComment] = useState("");
   const [likedMap, setLikedMap] = useState({});
 
-  // Query to fetch comments for the video
+  // Query to fetch comments
   const { data: comments, isLoading } = useQuery({
     queryKey: ["comments", videoId],
     queryFn: () => fetchComments(videoId),
@@ -35,9 +31,8 @@ function CommentList({ videoId }) {
   const addCommentMutation = useMutation({
     mutationFn: addComment,
     onSuccess: () => {
-      // When a comment is added, invalidate the comments query to refetch the list
       queryClient.invalidateQueries({ queryKey: ["comments", videoId] });
-      setNewComment(""); // Clear the input field
+      setNewComment("");
     },
   });
 
@@ -54,16 +49,14 @@ function CommentList({ videoId }) {
       return data.data;
     },
     onSuccess: (data, commentId) => {
-      // data contains { isLiked }
       setLikedMap(prev => ({ ...prev, [commentId]: data.isLiked }));
-      // optionally refetch comments if likes count is added later
       queryClient.invalidateQueries({ queryKey: ["comments", videoId] });
     },
   });
 
   return (
-    <div className="mt-6">
-      <h3 className="text-xl font-bold text-white mb-4">
+    <div className="mt-8 bg-slate-900 rounded-xl p-4 md:p-6 border border-slate-850">
+      <h3 className="text-lg font-bold text-slate-100 mb-6">
         {comments?.length || 0} Comments
       </h3>
 
@@ -72,28 +65,35 @@ function CommentList({ videoId }) {
         <div className="mb-6">
           <form
             onSubmit={handleCommentSubmit}
-            className="flex items-start space-x-4"
+            className="flex flex-col sm:flex-row items-start space-y-3 sm:space-y-0 sm:space-x-4"
           >
             <img
               src={user?.avatar}
               alt={user?.username}
-              className="w-10 h-10 rounded-full object-cover"
+              className="w-9 h-9 rounded-full object-cover ring-2 ring-slate-800 shrink-0 hidden sm:block"
             />
-            <div className="grow">
+            <div className="w-full">
               <textarea
                 value={newComment}
                 onChange={e => setNewComment(e.target.value)}
                 placeholder="Add a comment..."
-                className="w-full bg-gray-700 text-white p-2 rounded-lg border border-gray-600 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                className="w-full bg-slate-800 text-slate-100 p-3 rounded-xl border border-slate-700 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm resize-none"
                 rows="2"
               ></textarea>
-              <button
-                type="submit"
-                disabled={addCommentMutation.isPending}
-                className="mt-2 px-4 py-2 bg-indigo-600 text-white font-semibold rounded-lg hover:bg-indigo-700 disabled:bg-indigo-400"
-              >
-                {addCommentMutation.isPending ? "Posting..." : "Comment"}
-              </button>
+              <div className="flex justify-between items-center mt-2">
+                <img
+                  src={user?.avatar}
+                  alt={user?.username}
+                  className="w-7 h-7 rounded-full object-cover sm:hidden"
+                />
+                <button
+                  type="submit"
+                  disabled={addCommentMutation.isPending || !newComment.trim()}
+                  className="px-4 py-2 bg-indigo-600 text-white text-xs font-semibold rounded-lg hover:bg-indigo-700 disabled:bg-slate-800 disabled:text-slate-500 disabled:border-slate-700 border border-transparent transition ml-auto"
+                >
+                  {addCommentMutation.isPending ? "Posting..." : "Comment"}
+                </button>
+              </div>
             </div>
           </form>
         </div>
@@ -101,45 +101,56 @@ function CommentList({ videoId }) {
 
       {/* Display Comments */}
       {isLoading ? (
-        <p>Loading comments...</p>
+        <p className="text-sm text-slate-400">Loading comments...</p>
       ) : (
-        <div className="space-y-4">
-          {comments?.map(comment => (
-            <div key={comment._id} className="flex items-start space-x-4">
+        <div className="space-y-5 divide-y divide-slate-850">
+          {comments?.map((comment, index) => (
+            <div
+              key={comment._id}
+              className={`flex items-start space-x-3 text-sm ${index !== 0 ? "pt-5" : ""}`}
+            >
               <img
-                src={comment.owner.avatar}
-                alt={comment.owner.username}
-                className="w-10 h-10 rounded-full object-cover"
+                src={comment.owner?.avatar}
+                alt={comment.owner?.username}
+                className="w-9 h-9 rounded-full object-cover shrink-0 ring-1 ring-slate-800"
               />
-              <div>
-                <div className="flex items-center space-x-2">
-                  <p className="font-semibold text-white">
-                    {comment.owner.username}
-                  </p>
-                  <p className="text-xs text-gray-400">
+              <div className="min-w-0 grow">
+                <div className="flex items-baseline space-x-2 flex-wrap">
+                  <span className="font-semibold text-slate-200 truncate">
+                    {comment.owner?.username || "Anonymous"}
+                  </span>
+                  <span className="text-xs text-slate-500 shrink-0">
                     {formatTimeAgo(comment.createdAt)}
-                  </p>
+                  </span>
                 </div>
-                <p className="text-gray-300">{comment.content}</p>
-                <div className="mt-2 flex items-center space-x-3">
+                <p className="text-slate-300 mt-1 break-words leading-relaxed whitespace-pre-wrap pr-2">
+                  {comment.content}
+                </p>
+                <div className="mt-2 flex items-center">
                   {isAuthenticated && (
                     <button
                       onClick={() =>
                         toggleCommentLikeMutation.mutate(comment._id)
                       }
-                      disabled={toggleCommentLikeMutation.isLoading}
-                      className="text-sm text-gray-400 hover:text-indigo-400 focus:outline-none"
+                      disabled={toggleCommentLikeMutation.isPending}
+                      className={`text-xs flex items-center space-x-1.5 px-2 py-1 rounded-md transition ${
+                        likedMap[comment._id]
+                          ? "text-indigo-400 bg-indigo-500/10"
+                          : "text-slate-400 hover:text-slate-200 hover:bg-slate-800"
+                      }`}
                     >
-                      {likedMap[comment._id] ? "💙 Liked" : "🤍 Like"}
+                      <span>{likedMap[comment._id] ? "❤️" : "🤍"}</span>
+                      <span>{likedMap[comment._id] ? "Liked" : "Like"}</span>
                     </button>
                   )}
                 </div>
               </div>
             </div>
           ))}
+
           {comments?.length === 0 && (
-            <p className="text-gray-400">
-              No comments yet. Be the first to comment!
+            <p className="text-sm text-slate-500 text-center py-4">
+              No comments yet. Be the first to join the conversation!
             </p>
           )}
         </div>

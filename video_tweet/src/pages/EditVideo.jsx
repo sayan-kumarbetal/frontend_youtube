@@ -3,7 +3,6 @@ import { useParams, useNavigate } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import apiClient from "../api/axios";
 
-// --- API Functions ---
 const fetchVideoById = async videoId => {
   const { data } = await apiClient.get(`/videos/${videoId}`);
   return data.data;
@@ -11,68 +10,56 @@ const fetchVideoById = async videoId => {
 
 const updateVideoDetails = async ({ videoId, formData }) => {
   const { data } = await apiClient.patch(`/videos/${videoId}`, formData, {
-    headers: {
-      "Content-Type": "multipart/form-data",
-    },
+    headers: { "Content-Type": "multipart/form-data" },
   });
   return data.data;
 };
 
-// --- Component ---
 function EditVideo() {
   const { videoId } = useParams();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
 
-  // State for the form fields
   const [formData, setFormData] = useState({
     title: "",
     description: "",
-    thumbnail: null, // This will hold the new thumbnail file if selected
+    thumbnail: null,
   });
   const [error, setError] = useState("");
 
-  // 1. Fetch the current video data to pre-fill the form
   const { data: video, isLoading } = useQuery({
     queryKey: ["video", videoId],
     queryFn: () => fetchVideoById(videoId),
     enabled: !!videoId,
   });
 
-  // 2. Use useEffect to update the form state once the video data is loaded
   useEffect(() => {
     if (video) {
       setFormData({
         title: video.title,
         description: video.description,
-        thumbnail: null, // Reset thumbnail on data load
+        thumbnail: null,
       });
     }
   }, [video]);
 
-  // 3. Create the mutation for updating the video
   const updateMutation = useMutation({
     mutationFn: updateVideoDetails,
     onSuccess: () => {
-      // Invalidate queries to refetch data on dashboard and video page
       queryClient.invalidateQueries({ queryKey: ["dashboardVideos"] });
       queryClient.invalidateQueries({ queryKey: ["video", videoId] });
-      navigate("/dashboard"); // Redirect to dashboard on success
+      navigate("/dashboard");
     },
     onError: err => {
       setError(
-        err.response?.data?.message || "Update failed. Please try again.",
+        err.response?.data?.message || "Metadata updates generation rejected.",
       );
     },
   });
 
   const handleChange = e => {
     const { name, value, files } = e.target;
-    if (files) {
-      setFormData({ ...formData, [name]: files[0] });
-    } else {
-      setFormData({ ...formData, [name]: value });
-    }
+    setFormData({ ...formData, [name]: files ? files[0] : value });
   };
 
   const handleSubmit = e => {
@@ -82,7 +69,6 @@ function EditVideo() {
     const submissionData = new FormData();
     submissionData.append("title", formData.title);
     submissionData.append("description", formData.description);
-    // Only append the thumbnail if a new one has been selected
     if (formData.thumbnail) {
       submissionData.append("thumbnail", formData.thumbnail);
     }
@@ -90,21 +76,30 @@ function EditVideo() {
     updateMutation.mutate({ videoId, formData: submissionData });
   };
 
-  if (isLoading) {
-    return <div className="text-center p-8">Loading video details...</div>;
-  }
+  if (isLoading)
+    return (
+      <div className="text-center py-20 text-slate-400 text-sm bg-slate-950 min-h-screen">
+        Acquiring current stream descriptors...
+      </div>
+    );
 
   return (
-    <div className="flex justify-center items-start py-10 bg-gray-900 min-h-screen">
-      <div className="w-full max-w-2xl p-8 space-y-6 bg-gray-800 rounded-lg shadow-lg">
-        <h2 className="text-2xl font-bold text-center text-white">
-          Edit Video
+    <div className="min-h-screen bg-slate-950 text-slate-100 py-6 md:py-10 flex justify-center items-start px-4">
+      <div className="w-full max-w-2xl p-5 md:p-8 space-y-6 bg-slate-900 border border-slate-850 rounded-2xl shadow-2xl">
+        <h2 className="text-xl md:text-2xl font-black text-center tracking-tight text-white">
+          Reconfigure Media Attributes
         </h2>
-        {error && <p className="text-red-500 text-center text-sm">{error}</p>}
-        <form onSubmit={handleSubmit} className="space-y-6">
+
+        {error && (
+          <p className="bg-rose-500/10 border border-rose-500/20 text-rose-400 p-3 rounded-xl text-center text-xs font-semibold">
+            {error}
+          </p>
+        )}
+
+        <form onSubmit={handleSubmit} className="space-y-5">
           <div>
-            <label className="block text-sm font-medium text-gray-300">
-              Title
+            <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider">
+              Title Parameter
             </label>
             <input
               type="text"
@@ -112,12 +107,12 @@ function EditVideo() {
               value={formData.title}
               onChange={handleChange}
               required
-              className="w-full px-3 py-2 mt-1 text-gray-300 bg-gray-700 border border-gray-600 rounded-md"
+              className="w-full px-3.5 py-2 mt-1.5 text-slate-200 bg-slate-800 border border-slate-700 rounded-xl text-sm focus:outline-none focus:border-indigo-500 transition"
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-300">
-              Description
+            <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider">
+              Content Summary Field
             </label>
             <textarea
               name="description"
@@ -125,37 +120,45 @@ function EditVideo() {
               onChange={handleChange}
               required
               rows="4"
-              className="w-full px-3 py-2 mt-1 text-gray-300 bg-gray-700 border border-gray-600 rounded-md"
+              className="w-full px-3.5 py-2 mt-1.5 text-slate-200 bg-slate-800 border border-slate-700 rounded-xl text-sm focus:outline-none focus:border-indigo-500 transition resize-none"
             ></textarea>
           </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-300">
-              Current Thumbnail
-            </label>
-            <img
-              src={video?.thumbnail}
-              alt="Current Thumbnail"
-              className="w-48 h-27 object-cover rounded-md mt-2"
-            />
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-4 border-t border-slate-850 items-end">
+            <div>
+              <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider">
+                Active Poster Image
+              </label>
+              <div className="w-full aspect-video rounded-xl overflow-hidden bg-slate-800 mt-2 border border-slate-750">
+                <img
+                  src={video?.thumbnail}
+                  alt=""
+                  className="w-full h-full object-cover"
+                />
+              </div>
+            </div>
+            <div>
+              <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider">
+                Overwrite Target Thumbnail
+              </label>
+              <input
+                type="file"
+                name="thumbnail"
+                onChange={handleChange}
+                accept="image/*"
+                className="w-full text-xs text-slate-400 mt-1.5 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-slate-800 file:text-slate-300 hover:file:bg-slate-750 cursor-pointer"
+              />
+            </div>
           </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-300">
-              Upload New Thumbnail (Optional)
-            </label>
-            <input
-              type="file"
-              name="thumbnail"
-              onChange={handleChange}
-              accept="image/*"
-              className="w-full text-sm text-gray-400 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-gray-600 file:text-gray-200 hover:file:bg-gray-500"
-            />
-          </div>
+
           <button
             type="submit"
             disabled={updateMutation.isPending}
-            className="w-full px-4 py-2 font-bold text-white bg-indigo-600 rounded-md hover:bg-indigo-700 disabled:bg-indigo-400"
+            className="w-full px-4 py-2.5 font-bold text-white bg-indigo-600 hover:bg-indigo-700 rounded-xl text-sm transition shadow-md disabled:bg-slate-800 disabled:text-slate-500"
           >
-            {updateMutation.isPending ? "Updating..." : "Save Changes"}
+            {updateMutation.isPending
+              ? "Committing Updates..."
+              : "Save Configuration Parameters"}
           </button>
         </form>
       </div>

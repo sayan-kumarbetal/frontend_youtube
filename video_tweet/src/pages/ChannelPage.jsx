@@ -5,7 +5,6 @@ import { useSelector } from "react-redux";
 import apiClient from "../api/axios";
 import VideoCard from "../components/VideoCard";
 
-// --- API Functions ---
 const fetchChannelProfile = async username => {
   const { data } = await apiClient.get(`/users/channel/${username}`);
   return data.data;
@@ -22,7 +21,6 @@ const toggleSubscription = async channelId => {
   return data;
 };
 
-// --- Component ---
 function ChannelPage() {
   const { username } = useParams();
   const queryClient = useQueryClient();
@@ -46,71 +44,74 @@ function ChannelPage() {
     mutationFn: () => toggleSubscription(channel?._id),
     onSuccess: () => {
       queryClient.invalidateQueries(["channel", username]);
-      queryClient.refetchQueries(["channel", username]);
     },
   });
 
-  if (isLoadingChannel) {
-    return <div className="text-center p-8">Loading channel...</div>;
-  }
+  if (isLoadingChannel)
+    return (
+      <div className="text-center py-20 text-slate-400 text-sm bg-slate-950 min-h-screen">
+        Loading studio profile...
+      </div>
+    );
+  if (!channel)
+    return (
+      <div className="text-center py-20 text-slate-400 text-sm bg-slate-950 min-h-screen">
+        Channel node context could not be located.
+      </div>
+    );
 
-  if (!channel) {
-    return <div className="text-center p-8">Channel not found.</div>;
-  }
-
-  // ✅ Check if logged in user is the channel owner
   const isOwner =
     loggedInUser?._id === channel?._id ||
     loggedInUser?.username === channel?.username;
 
   return (
-    <div className="text-white">
-      {/* Cover Image */}
-      <div className="w-full h-48 md:h-64 bg-gray-700">
+    <div className="bg-slate-950 min-h-screen text-slate-100 pb-12">
+      {/* Dynamic Cover Image Banner */}
+      <div className="w-full h-36 md:h-56 bg-slate-900 border-b border-slate-850">
         {channel.coverImage && (
           <img
             src={channel.coverImage}
-            alt={`${channel.username}'s cover`}
+            alt=""
             className="w-full h-full object-cover"
           />
         )}
       </div>
 
-      <div className="container mx-auto px-4 py-8">
-        {/* Channel Header */}
-        <div className="flex flex-col md:flex-row items-center md:items-end -mt-16 md:-mt-20">
+      <div className="container mx-auto px-4 max-w-7xl">
+        {/* Profile Card Header Block */}
+        <div className="flex flex-col sm:flex-row items-center sm:items-end -mt-12 md:-mt-16 text-center sm:text-left gap-4 sm:gap-6">
           <img
             src={channel.avatar}
-            alt={channel.username}
-            className="w-32 h-32 md:w-40 md:h-40 rounded-full object-cover border-4 border-gray-900 bg-gray-800"
+            alt=""
+            className="w-28 h-28 md:w-36 md:h-36 rounded-full object-cover border-4 border-slate-950 bg-slate-900 shadow-xl"
           />
-          <div className="md:ml-6 mt-4 md:mt-0 text-center md:text-left">
-            <h1 className="text-3xl font-bold">{channel.fullname}</h1>
-            <p className="text-gray-400">@{channel.username}</p>
-            <div className="flex space-x-4 mt-2 text-gray-400">
-              {/* ✅ Fixed field names to match backend */}
+          <div className="grow min-w-0 sm:mb-2">
+            <h1 className="text-2xl md:text-3xl font-black tracking-tight text-white">
+              {channel.fullname}
+            </h1>
+            <p className="text-sm text-slate-400">@{channel.username}</p>
+            <div className="flex items-center justify-center sm:justify-start gap-3 text-xs font-medium text-slate-500 mt-2 flex-wrap">
               <span>{channel.subscribersCount} Subscribers</span>
-
-              {/* ✅ Only show "Subscribed" count to channel owner */}
               {isOwner && (
                 <>
-                  <span>·</span>
-                  <span>{channel.channelSubscribedToCount} Subscribed</span>
+                  <span className="text-slate-800">·</span>
+                  <span>
+                    {channel.channelSubscribedToCount} Subscribed channels
+                  </span>
                 </>
               )}
             </div>
           </div>
 
-          {/* ✅ Subscribe button — only show to logged in non-owners */}
           {isAuthenticated && !isOwner && (
-            <div className="md:ml-auto mt-4 md:mt-0">
+            <div className="sm:mb-2 w-full sm:w-auto">
               <button
                 onClick={() => handleSubscribe()}
                 disabled={isPending}
-                className={`px-6 py-2 rounded-full font-semibold transition-colors ${
+                className={`w-full sm:w-auto px-6 py-2 rounded-xl text-xs font-bold transition shadow-md ${
                   channel.isSubscribed
-                    ? "bg-gray-600 hover:bg-gray-500 text-white"
-                    : "bg-red-600 hover:bg-red-700 text-white"
+                    ? "bg-slate-900 text-slate-400 border border-slate-800"
+                    : "bg-rose-600 hover:bg-rose-700 text-white"
                 }`}
               >
                 {isPending
@@ -123,22 +124,26 @@ function ChannelPage() {
           )}
         </div>
 
-        <hr className="border-gray-700 my-8" />
+        <div className="border-t border-slate-900 my-8"></div>
 
-        {/* Videos Section */}
-        <h2 className="text-2xl font-bold mb-4">Videos</h2>
+        {/* Catalog Layout Section */}
+        <h2 className="text-lg font-black mb-6 tracking-tight flex items-center gap-2">
+          📹 Published Nodes
+        </h2>
         {isLoadingVideos ? (
-          <p>Loading videos...</p>
+          <p className="text-xs text-slate-500">
+            Syncing local library docs...
+          </p>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-x-6 gap-y-8">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-x-5 gap-y-7">
             {videos?.map(video => (
               <VideoCard key={video._id} video={video} />
             ))}
           </div>
         )}
         {videos?.length === 0 && !isLoadingVideos && (
-          <p className="text-gray-400">
-            This channel has no public videos yet.
+          <p className="text-slate-500 text-xs text-center py-12 bg-slate-900 rounded-2xl border border-slate-850">
+            This workspace channel has no listed video logs available.
           </p>
         )}
       </div>

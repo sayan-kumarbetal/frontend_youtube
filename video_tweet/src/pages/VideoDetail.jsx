@@ -6,7 +6,6 @@ import apiClient from "../api/axios";
 import CommentList from "../components/CommentList";
 import PlaylistModal from "../components/PlaylistModal";
 
-// --- API Functions ---
 const fetchVideoById = async videoId => {
   const { data } = await apiClient.get(`/videos/${videoId}`);
   return data.data;
@@ -22,7 +21,6 @@ const toggleVideoLike = async videoId => {
   return data.data;
 };
 
-// --- Component ---
 function VideoDetail() {
   const { videoId } = useParams();
   const queryClient = useQueryClient();
@@ -42,12 +40,10 @@ function VideoDetail() {
     enabled: !!videoId,
   });
 
-  // --- Mutations ---
   const subscriptionMutation = useMutation({
     mutationFn: toggleSubscription,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["video", videoId] });
-      queryClient.refetchQueries({ queryKey: ["video", videoId] });
     },
   });
 
@@ -55,11 +51,9 @@ function VideoDetail() {
     mutationFn: toggleVideoLike,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["video", videoId] });
-      queryClient.refetchQueries({ queryKey: ["video", videoId] });
     },
   });
 
-  // --- Event Handlers ---
   const handleSubscribe = () => {
     if (!isAuthenticated) {
       alert("Please log in to subscribe.");
@@ -76,12 +70,19 @@ function VideoDetail() {
     likeMutation.mutate(videoId);
   };
 
-  // --- Render Logic ---
-  if (isLoading) return <div className="text-center p-8">Loading video...</div>;
+  if (isLoading)
+    return (
+      <div className="flex justify-center items-center min-h-screen bg-slate-950 text-slate-400 text-sm">
+        Streaming media buffer...
+      </div>
+    );
   if (isError)
-    return <div className="text-center p-8">Error: {error.message}</div>;
+    return (
+      <div className="text-center p-8 text-rose-500 bg-slate-950 min-h-screen">
+        Data Sync Error: {error.message}
+      </div>
+    );
 
-  // ✅ Check if logged in user is the video owner
   const isOwner = loggedInUser?._id === video?.owner?._id;
 
   const formatNumber = num =>
@@ -91,88 +92,100 @@ function VideoDetail() {
     }).format(num);
 
   return (
-    <>
-      <div className="container mx-auto px-4 py-8 grid grid-cols-1 lg:grid-cols-3 gap-8">
+    <div className="bg-slate-950 min-h-screen text-slate-100 py-4 md:py-8">
+      <div className="container mx-auto px-4 max-w-7xl grid grid-cols-1 lg:grid-cols-3 gap-6 md:gap-8">
+        {/* Main Channel Output Engine */}
         <div className="lg:col-span-2">
-          <div className="w-full bg-black aspect-video rounded-xl overflow-hidden">
+          <div className="w-full bg-black aspect-video rounded-2xl overflow-hidden shadow-2xl border border-slate-900">
             <video
               src={video.videoFile}
               controls
               autoPlay
               muted
-              className="w-full h-full"
+              className="w-full h-full object-contain"
             ></video>
           </div>
+
           <div className="mt-4">
-            <h1 className="text-2xl font-bold text-white">{video.title}</h1>
-            <div className="flex items-center justify-between text-gray-400 text-sm mt-2">
-              <div className="flex items-center space-x-4">
-                <span>{formatNumber(video.views)} views</span>
+            <h1 className="text-xl md:text-2xl font-black text-white leading-tight tracking-tight">
+              {video.title}
+            </h1>
+
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-slate-400 text-xs mt-2 border-b border-slate-900 pb-4">
+              <div className="flex items-center space-x-3">
+                <span className="font-medium text-slate-300">
+                  {formatNumber(video.views)} views
+                </span>
                 <span>·</span>
-                <span>{new Date(video.createdAt).toLocaleDateString()}</span>
+                <span>
+                  {new Date(video.createdAt).toLocaleDateString(undefined, {
+                    dateStyle: "medium",
+                  })}
+                </span>
               </div>
 
-              {/* Like Button */}
-              <button
-                onClick={handleLike}
-                disabled={likeMutation.isPending}
-                className={`px-4 py-2 font-semibold rounded-lg flex items-center space-x-2 transition-colors ${
-                  video.isLiked
-                    ? "bg-indigo-600 text-white"
-                    : "bg-gray-700 text-gray-300 hover:bg-gray-600"
-                }`}
-              >
-                <span>👍</span>
-                <span>{formatNumber(video.likesCount)}</span>
-              </button>
-
-              {/* ✅ Save button — only visible to video owner */}
-              {isOwner && (
+              <div className="flex items-center gap-2">
                 <button
-                  onClick={() => setIsPlaylistModalOpen(true)}
-                  className="px-4 py-2 font-semibold bg-gray-700 text-white rounded-lg hover:bg-gray-600"
+                  onClick={handleLike}
+                  disabled={likeMutation.isPending}
+                  className={`px-3.5 py-1.5 text-xs font-bold rounded-xl flex items-center space-x-1.5 transition ${
+                    video.isLiked
+                      ? "bg-indigo-600 text-white"
+                      : "bg-slate-900 text-slate-300 hover:bg-slate-850 border border-slate-800"
+                  }`}
                 >
-                  ➕ Add to Playlist
+                  <span>👍</span>
+                  <span>{formatNumber(video.likesCount)}</span>
                 </button>
-              )}
+
+                {isOwner && (
+                  <button
+                    onClick={() => setIsPlaylistModalOpen(true)}
+                    className="px-3.5 py-1.5 text-xs font-bold bg-slate-900 text-slate-300 hover:bg-slate-850 rounded-xl border border-slate-800 transition"
+                  >
+                    ➕ Collect Playlist
+                  </button>
+                )}
+              </div>
             </div>
           </div>
 
-          <hr className="border-gray-700 my-4" />
-
-          <div className="flex items-center justify-between">
-            <div className="flex items-center">
-              <Link to={`/channel/${video.owner.username}`}>
+          {/* Publisher Identity Block */}
+          <div className="flex items-center justify-between mt-4 bg-slate-900/40 border border-slate-900 p-4 rounded-2xl gap-4 flex-wrap sm:flex-nowrap">
+            <div className="flex items-center space-x-3.5 min-w-0">
+              <Link
+                to={`/channel/${video.owner.username}`}
+                className="shrink-0"
+              >
                 <img
                   src={video.owner.avatar}
-                  alt={video.owner.username}
-                  className="w-12 h-12 rounded-full object-cover"
+                  alt=""
+                  className="w-11 h-11 rounded-full object-cover ring-2 ring-slate-800"
                 />
               </Link>
-              <div className="ml-4">
+              <div className="min-w-0">
                 <Link
                   to={`/channel/${video.owner.username}`}
-                  className="hover:text-white transition"
+                  className="hover:text-indigo-400 transition block"
                 >
-                  <h2 className="text-lg font-semibold text-white">
+                  <h2 className="text-sm font-bold text-slate-200 truncate">
                     {video.owner.username}
                   </h2>
                 </Link>
-                <p className="text-sm text-gray-400">
-                  {formatNumber(video.owner.subscriberCount)} subscribers
+                <p className="text-xs text-slate-500 mt-0.5">
+                  {formatNumber(video.owner.subscriberCount || 0)} subscribers
                 </p>
               </div>
             </div>
 
-            {/* Subscribe Button — hidden from owner */}
             {!isOwner && (
               <button
                 onClick={handleSubscribe}
                 disabled={subscriptionMutation.isPending}
-                className={`px-4 py-2 font-semibold rounded-lg transition-colors ${
+                className={`w-full sm:w-auto px-4 py-2 text-xs font-bold rounded-xl transition shrink-0 ${
                   video.owner.isSubscribed
-                    ? "bg-gray-600 text-white"
-                    : "bg-red-600 text-white hover:bg-red-700"
+                    ? "bg-slate-800 text-slate-400 border border-slate-700"
+                    : "bg-rose-600 text-white hover:bg-rose-700"
                 }`}
               >
                 {subscriptionMutation.isPending
@@ -184,8 +197,8 @@ function VideoDetail() {
             )}
           </div>
 
-          <div className="mt-4 p-4 bg-gray-800 rounded-lg">
-            <p className="text-gray-300 whitespace-pre-wrap">
+          <div className="mt-4 p-4 bg-slate-900 border border-slate-850 rounded-2xl">
+            <p className="text-slate-300 text-sm whitespace-pre-wrap leading-relaxed break-words">
               {video.description}
             </p>
           </div>
@@ -193,22 +206,26 @@ function VideoDetail() {
           <CommentList videoId={videoId} />
         </div>
 
+        {/* Sidebar Component Columns */}
         <div className="lg:col-span-1">
-          <h3 className="text-xl font-bold text-white mb-4">Related Videos</h3>
-          <div className="bg-gray-800 p-4 rounded-lg">
-            <p className="text-gray-400">Related videos coming soon!</p>
+          <h3 className="text-sm font-bold text-slate-400 uppercase tracking-wider mb-3">
+            Up Next Node
+          </h3>
+          <div className="bg-slate-900 border border-slate-850 p-4 rounded-2xl text-center">
+            <p className="text-xs text-slate-500">
+              Related contextual updates stream coming soon.
+            </p>
           </div>
         </div>
       </div>
 
-      {/* ✅ Playlist Modal — only opens for owner */}
       {isPlaylistModalOpen && isOwner && (
         <PlaylistModal
           video={video}
           onClose={() => setIsPlaylistModalOpen(false)}
         />
       )}
-    </>
+    </div>
   );
 }
 
