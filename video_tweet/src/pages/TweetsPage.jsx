@@ -4,6 +4,7 @@ import { useSelector } from "react-redux";
 import apiClient from "../api/axios";
 import { formatTimeAgo } from "../utils/time";
 
+// --- API Functions ---
 const fetchUserTweets = async userId => {
   const { data } = await apiClient.get(`/tweets/user/${userId}`);
   return data.data.tweets;
@@ -29,6 +30,7 @@ const toggleTweetLike = async tweetId => {
   return data.data;
 };
 
+// --- Component ---
 function TweetsPage() {
   const queryClient = useQueryClient();
   const { isAuthenticated, user } = useSelector(state => state.auth);
@@ -36,6 +38,11 @@ function TweetsPage() {
   const [editingTweetId, setEditingTweetId] = useState(null);
   const [editContent, setEditContent] = useState("");
 
+  // --- AI Smart Assistant State Hub ---
+  const [aiTweetOptions, setAiTweetOptions] = useState(null);
+  const [isAiLoading, setIsAiLoading] = useState(false);
+
+  // Fetch only logged in user's tweets
   const { data: tweets, isLoading } = useQuery({
     queryKey: ["userTweets", user?._id],
     queryFn: () => fetchUserTweets(user?._id),
@@ -47,6 +54,7 @@ function TweetsPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["userTweets", user?._id] });
       setTweetContent("");
+      setAiTweetOptions(null); // Clear suggestions after posting
     },
   });
 
@@ -73,6 +81,30 @@ function TweetsPage() {
     },
   });
 
+  // --- AI Prompt Engine Pipeline ---
+  const handleAiRefineText = async () => {
+    if (!tweetContent.trim()) {
+      alert(
+        "Type a rough thought or sentence into the composer first so the AI can fix it!",
+      );
+      return;
+    }
+    setIsAiLoading(true);
+    setAiTweetOptions(null);
+    try {
+      const { data } = await apiClient.post("/ai/refine-tweet", {
+        rawDraft: tweetContent,
+      });
+      if (data.success) {
+        setAiTweetOptions(data.data);
+      }
+    } catch (err) {
+      alert("Failed to communicate with text optimization matrix array.");
+    } finally {
+      setIsAiLoading(false);
+    }
+  };
+
   const handleTweetSubmit = e => {
     e.preventDefault();
     if (!tweetContent.trim()) return;
@@ -89,6 +121,20 @@ function TweetsPage() {
     updateTweetMutation.mutate({ tweetId, content: editContent });
   };
 
+  const handleDelete = tweetId => {
+    if (window.confirm("Are you sure you want to delete this tweet?")) {
+      deleteTweetMutation.mutate(tweetId);
+    }
+  };
+
+  const handleLike = tweetId => {
+    if (!isAuthenticated) {
+      alert("Please log in to like a tweet.");
+      return;
+    }
+    likeMutation.mutate(tweetId);
+  };
+
   if (!isAuthenticated) {
     return (
       <div className="container mx-auto px-4 py-12 max-w-2xl text-center text-slate-400 bg-slate-950 min-h-screen">
@@ -98,7 +144,7 @@ function TweetsPage() {
           <a href="/login" className="text-indigo-400 hover:underline">
             log in
           </a>{" "}
-          to view personal tweets feed.
+          to see your tweets.
         </p>
       </div>
     );
@@ -107,13 +153,13 @@ function TweetsPage() {
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 py-6 md:py-10">
       <div className="container mx-auto px-4 max-w-2xl">
-        <h1 className="text-2xl font-black mb-6 tracking-tight">
+        <h1 className="text-2xl md:text-3xl font-black mb-6 tracking-tight">
           My Profile Tweets
         </h1>
 
-        {/* Creation Core Field Block */}
-        <div className="bg-slate-900 border border-slate-850 p-4 rounded-2xl mb-6">
-          <form onSubmit={handleTweetSubmit} className="flex space-x-3">
+        {/* Create Tweet Composer with Integrated AI Controls */}
+        <div className="bg-slate-900 border border-slate-850 p-4 rounded-2xl mb-6 shadow-xl space-y-4">
+          <form onSubmit={handleTweetSubmit} className="flex space-x-3.5">
             <img
               src={user?.avatar}
               alt=""
@@ -123,31 +169,95 @@ function TweetsPage() {
               <textarea
                 value={tweetContent}
                 onChange={e => setTweetContent(e.target.value)}
-                placeholder="Broadcast a new system tweet update..."
-                className="w-full bg-slate-800 text-slate-100 p-3 rounded-xl border border-slate-700 placeholder-slate-500 focus:outline-none focus:border-indigo-500 text-sm resize-none"
+                placeholder="What's happening? Type a rough thought..."
+                className="w-full bg-slate-800 text-slate-100 p-3 rounded-xl border border-slate-700 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm resize-none transition"
                 rows="3"
               ></textarea>
-              <div className="flex justify-between items-center mt-2">
-                <img
-                  src={user?.avatar}
-                  alt=""
-                  className="w-7 h-7 rounded-full object-cover sm:hidden ring-1 ring-slate-800"
-                />
+
+              <div className="flex justify-between items-center mt-2.5">
+                <div className="flex items-center gap-2">
+                  <img
+                    src={user?.avatar}
+                    alt=""
+                    className="w-7 h-7 rounded-full object-cover sm:hidden ring-1 ring-slate-800"
+                  />
+
+                  {/* ✨ AI Magic Button */}
+                  <button
+                    type="button"
+                    onClick={handleAiRefineText}
+                    disabled={isAiLoading || !tweetContent.trim()}
+                    className="px-3.5 py-1.5 bg-indigo-600/10 text-indigo-400 hover:bg-indigo-600 hover:text-white border border-indigo-500/20 text-xs font-bold rounded-xl transition flex items-center gap-1 disabled:opacity-40"
+                  >
+                    {isAiLoading ? "Processing..." : "✨ AI Fix"}
+                  </button>
+                </div>
+
                 <button
                   type="submit"
                   disabled={
                     createTweetMutation.isPending || !tweetContent.trim()
                   }
-                  className="px-5 py-2 bg-indigo-600 text-white text-xs font-bold rounded-xl hover:bg-indigo-700 disabled:bg-slate-800 disabled:text-slate-500 transition shadow-md"
+                  className="px-5 py-1.5 bg-indigo-600 text-white text-xs font-bold rounded-xl hover:bg-indigo-700 transition shadow-md disabled:bg-slate-800 disabled:text-slate-500"
                 >
                   {createTweetMutation.isPending ? "Sharing..." : "Tweet Node"}
                 </button>
               </div>
             </div>
           </form>
+
+          {/* AI Refiner Options Dropdown Container Layout */}
+          {isAiLoading && (
+            <div className="pt-3 border-t border-slate-850 flex items-center justify-center space-x-2 py-4">
+              <div className="w-4 h-4 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin"></div>
+              <p className="text-xs text-slate-500 font-medium animate-pulse">
+                Running semantic rewrite vectors...
+              </p>
+            </div>
+          )}
+
+          {!isAiLoading && aiTweetOptions && (
+            <div className="pt-4 border-t border-slate-850 space-y-3 animate-fadeIn">
+              <p className="text-[10px] font-bold text-indigo-400 uppercase tracking-wider flex items-center gap-1">
+                <span>⚡</span> Gemini Smart Rewrite Suggestions
+              </p>
+
+              <div className="grid grid-cols-1 gap-2.5">
+                {[
+                  { type: "🔥 Viral", text: aiTweetOptions.viral },
+                  {
+                    type: "💼 Professional",
+                    text: aiTweetOptions.professional,
+                  },
+                  { type: "🎭 Funny / Witty", text: aiTweetOptions.funny },
+                ].map((option, idx) => (
+                  <div
+                    key={idx}
+                    className="bg-slate-850 border border-slate-800 p-3 rounded-xl flex flex-col justify-between items-start gap-2 hover:border-slate-750 transition group"
+                  >
+                    <div className="w-full">
+                      <span className="text-[10px] font-extrabold text-slate-500 uppercase tracking-wide">
+                        {option.type}
+                      </span>
+                      <p className="text-xs text-slate-200 mt-1 leading-relaxed italic">
+                        "{option.text}"
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setTweetContent(option.text)}
+                      className="text-[10px] font-bold text-indigo-400 hover:text-white bg-indigo-500/5 hover:bg-indigo-600 px-2.5 py-1 rounded-md border border-indigo-500/10 hover:border-transparent transition self-end"
+                    >
+                      📥 Inject to Composer
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
 
-        {/* Node Stream Logs Iteration */}
+        {/* Tweet List Logs */}
         {isLoading ? (
           <p className="text-xs text-slate-500">
             Processing collection records...
@@ -191,10 +301,7 @@ function TweetsPage() {
                             Edit
                           </button>
                           <button
-                            onClick={() => {
-                              if (confirm("Delete tweet?"))
-                                deleteTweetMutation.mutate(tweet._id);
-                            }}
+                            onClick={() => handleDelete(tweet._id)}
                             disabled={deleteTweetMutation.isPending}
                             className="text-[11px] text-rose-400 font-semibold px-2 py-0.5 rounded hover:bg-slate-800 transition"
                           >
@@ -224,7 +331,9 @@ function TweetsPage() {
                             disabled={updateTweetMutation.isPending}
                             className="text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-700 px-3 py-1 rounded-md transition"
                           >
-                            {updateTweetMutation.isPending ? "..." : "Save"}
+                            {updateTweetMutation.isPending
+                              ? "Saving..."
+                              : "Save"}
                           </button>
                         </div>
                       </div>
